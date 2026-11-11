@@ -36,11 +36,16 @@
 
   // Change language and reload (the Bluetooth link reconnects by itself).
   window.setLang = function (value) {
-    try { localStorage.setItem(KEY, value); } catch (e) {}
+    var stored = false;
+    try { localStorage.setItem(KEY, value); stored = localStorage.getItem(KEY) === value; } catch (e) {}
     var params = new URLSearchParams(location.search);
-    params.delete('lang');
+    // Saved choice when storage works; otherwise keep the language in the URL (?lang=).
+    if (stored) params.delete('lang'); else params.set('lang', value);
     var search = params.toString();
-    location.replace(location.pathname + (search ? '?' + search : '') + location.hash);
+    // replaceState + reload: location.replace() to a URL that differs only by its #hash
+    // (e.g. ".../#" after coming back home) does not reload the page.
+    try { history.replaceState(null, '', location.pathname + (search ? '?' + search : '') + location.hash); } catch (e) {}
+    location.reload();
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { apply(document); });
