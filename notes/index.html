@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Notes" />
+  <meta name="theme-color" content="#000000" />
+  <title>Notes</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="../i18n.js"></script>
+</head>
+<body>
+  <canvas id="base"></canvas>
+  <canvas id="live"></canvas>
+
+  <div id="ui">
+    <!-- Barre du haut -->
+    <button class="round-btn glass" id="btn-back" aria-label="Retour" data-en-aria="Back">
+      <svg viewBox="0 0 104 104"><path d="M60 31 L38 52 L60 73" fill="none" stroke="#fff" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="round-btn glass" id="btn-more" aria-label="Plus d'options" data-en-aria="More options">
+      <svg viewBox="0 0 104 104"><circle cx="33" cy="53" r="4.7" fill="#fff"/><circle cx="52" cy="53" r="4.7" fill="#fff"/><circle cx="71" cy="53" r="4.7" fill="#fff"/></svg>
+    </button>
+    <button class="round-btn" id="btn-done" aria-label="Terminé" data-en-aria="Done">
+      <svg class="ic-check" viewBox="0 0 104 104"><path d="M31 54 L45 74 L72 31" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="ic-markup" viewBox="0 0 104 104"><path d="M52 26 C55 26 58 38 59 46 C62 56 66 66 66 74 L66 80 L38 80 L38 74 C38 66 42 56 45 46 C46 38 49 26 52 26 Z" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/><path d="M45.5 44 L58.5 44" stroke="#fff" stroke-width="5"/></svg>
+    </button>
+
+    <!-- Palette d'outils -->
+    <div id="toolbar">
+      <svg id="toolbar-svg" viewBox="0 0 828 234" preserveAspectRatio="none">
+        <defs>
+          <clipPath id="tb-clip"><rect x="0" y="0" width="828" height="234" rx="84" ry="84"/></clipPath>
+          <linearGradient id="tb-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#262626"/>
+            <stop offset="1" stop-color="#1f1f1f"/>
+          </linearGradient>
+          <linearGradient id="tb-rim" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+            <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.05"/>
+            <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.04"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0.13"/>
+          </linearGradient>
+          <!-- Corps cylindrique des outils -->
+          <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#1b1b1b"/>
+            <stop offset="0.12" stop-color="#2c2c2c"/>
+            <stop offset="0.38" stop-color="#303030"/>
+            <stop offset="0.7" stop-color="#2a2a2a"/>
+            <stop offset="0.92" stop-color="#202020"/>
+            <stop offset="1" stop-color="#171717"/>
+          </linearGradient>
+          <linearGradient id="body-v" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#000" stop-opacity="0"/>
+            <stop offset="0.7" stop-color="#000" stop-opacity="0"/>
+            <stop offset="1" stop-color="#fff" stop-opacity="0.05"/>
+          </linearGradient>
+          <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#000" stop-opacity="0.22"/>
+            <stop offset="0.35" stop-color="#fff" stop-opacity="0.08"/>
+            <stop offset="0.7" stop-color="#000" stop-opacity="0"/>
+            <stop offset="1" stop-color="#000" stop-opacity="0.2"/>
+          </linearGradient>
+          <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f3a4a2"/>
+            <stop offset="1" stop-color="#ec9896"/>
+          </linearGradient>
+          <pattern id="stripes" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)">
+            <rect width="13" height="13" fill="#262626"/>
+            <rect width="13" height="6" fill="#4d4d4d"/>
+          </pattern>
+          <linearGradient id="lasso-fade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fff" stop-opacity="0.06"/>
+            <stop offset="1" stop-color="#000" stop-opacity="0.15"/>
+          </linearGradient>
+        </defs>
+
+        <rect x="0" y="0" width="828" height="234" rx="84" ry="84" fill="url(#tb-fill)"/>
+
+        <g clip-path="url(#tb-clip)">
+          <!-- Stylo -->
+          <g class="tool" data-tool="pen" transform="translate(0 33)">
+            <g class="lift">
+              <rect class="hit" x="72" y="0" width="68" height="300" fill="transparent"/>
+              <path d="M106 33 C111 33 114 48 115 57 C120 80 132 105 132 125 L132 320 L80 320 L80 125 C80 105 92 80 97 57 C98 48 101 33 106 33 Z" fill="url(#body)"/>
+              <path d="M106 33 C111 33 114 48 115 57 C120 80 132 105 132 125 L132 320 L80 320 L80 125 C80 105 92 80 97 57 C98 48 101 33 106 33 Z" fill="url(#body-v)"/>
+              <path class="tint" d="M106 33 C110.6 33 113.4 45 114.4 55.5 Q106 57.5 97.6 55.5 C98.6 45 101.4 33 106 33 Z" fill="#ffffff"/>
+              <path d="M106 33 C110.6 33 113.4 45 114.4 55.5 Q106 57.5 97.6 55.5 C98.6 45 101.4 33 106 33 Z" fill="url(#shade)" opacity="0.6"/>
+              <rect class="tint" x="80" y="145" width="52" height="8" fill="#ffffff"/>
+            </g>
+          </g>
+
+          <!-- Feutre fin (monoline) -->
+          <g class="tool" data-tool="fineliner">
+            <g class="lift">
+              <rect class="hit" x="186" y="40" width="68" height="300" fill="transparent"/>
+              <rect x="218.6" y="78" width="2.8" height="24" fill="#3a3a3a"/>
+              <rect class="tint" x="217" y="70" width="6" height="10.5" rx="1" fill="#ffffff"/>
+              <path d="M205 102 Q205 100 207 100 L233 100 Q235 100 235 102 L235 120 L205 120 Z" fill="url(#body)"/>
+              <path d="M199 121 Q199 119 201 119 L239 119 Q241 119 241 121 L241 166 L199 166 Z" fill="url(#body)"/>
+              <path d="M195 167 Q195 165 197 165 L244 165 Q246 165 246 167 L246 320 L195 320 Z" fill="url(#body)"/>
+              <path d="M195 167 Q195 165 197 165 L244 165 Q246 165 246 167 L246 320 L195 320 Z" fill="url(#body-v)"/>
+              <rect x="205" y="119" width="30" height="1.2" fill="#000" opacity="0.35"/>
+              <rect x="199" y="165" width="42" height="1.2" fill="#000" opacity="0.35"/>
+              <rect class="tint" x="194.5" y="201" width="52" height="5" fill="#ffffff"/>
+            </g>
+          </g>
+
+          <!-- Surligneur -->
+          <g class="tool" data-tool="marker">
+            <g class="lift">
+              <rect class="hit" x="300" y="40" width="68" height="300" fill="transparent"/>
+              <path class="tint" d="M321.5 80.8 L344.6 67.4 Q348.3 65.4 348.3 69.6 L348.3 97 L319.7 97 L319.7 84 Q319.7 81.9 321.5 80.8 Z" fill="#d6a71b"/>
+              <path d="M321.5 80.8 L344.6 67.4 Q348.3 65.4 348.3 69.6 L348.3 97 L319.7 97 L319.7 84 Q319.7 81.9 321.5 80.8 Z" fill="url(#shade)" opacity="0.55"/>
+              <path d="M318 96 L349.4 96 L349.4 126 C349.4 140 360.2 144 360.2 160 L360.2 320 L307.8 320 L307.8 160 C307.8 144 318 140 318 126 Z" fill="url(#body)"/>
+              <path d="M318 96 L349.4 96 L349.4 126 C349.4 140 360.2 144 360.2 160 L360.2 320 L307.8 320 L307.8 160 C307.8 144 318 140 318 126 Z" fill="url(#body-v)"/>
+              <rect class="tint" x="307.8" y="177" width="52.4" height="22" fill="#d6a71b"/>
+              <rect x="307.8" y="177" width="52.4" height="22" fill="url(#shade)" opacity="0.45"/>
+              <text class="op-label" x="334" y="236" text-anchor="middle">80</text>
+            </g>
+          </g>
+
+          <!-- Gomme -->
+          <g class="tool" data-tool="eraser">
+            <g class="lift">
+              <rect class="hit" x="414" y="40" width="68" height="300" fill="transparent"/>
+              <path d="M422 113 L422 78 Q422 66 434 66 L461 66 Q473 66 473 78 L473 113 Z" fill="url(#pink)"/>
+              <path d="M422 113 L422 78 Q422 66 434 66 L461 66 Q473 66 473 78 L473 113 Z" fill="url(#shade)" opacity="0.35"/>
+              <rect x="422" y="113" width="51" height="210" fill="url(#body)"/>
+              <rect x="422" y="113" width="51" height="210" fill="url(#body-v)"/>
+              <rect x="422" y="113" width="51" height="1.5" fill="#000" opacity="0.35"/>
+              <rect x="422" y="158.5" width="51" height="1" fill="#000" opacity="0.28"/>
+            </g>
+          </g>
+
+          <!-- Lasso -->
+          <g class="tool" data-tool="lasso">
+            <g class="lift">
+              <rect class="hit" x="527" y="40" width="68" height="300" fill="transparent"/>
+              <path d="M561 66 C563.5 66 585 138 587 162 L535 162 C537 138 558.5 66 561 66 Z" fill="url(#stripes)"/>
+              <path d="M561 66 C563.5 66 585 138 587 162 L535 162 C537 138 558.5 66 561 66 Z" fill="url(#shade)" opacity="0.5"/>
+              <path d="M561 66 C563.5 66 585 138 587 162 L535 162 C537 138 558.5 66 561 66 Z" fill="url(#lasso-fade)"/>
+              <rect x="535" y="162" width="52" height="160" fill="url(#body)"/>
+              <rect x="535" y="162" width="52" height="160" fill="url(#body-v)"/>
+            </g>
+          </g>
+        </g>
+
+        <rect x="0.75" y="0.75" width="826.5" height="232.5" rx="83.25" ry="83.25" fill="none" stroke="url(#tb-rim)" stroke-width="1.5"/>
+        <rect id="grabber" x="378" y="5" width="72" height="10" rx="5" fill="#3b3b3b"/>
+      </svg>
+
+      <button id="btn-color" aria-label="Couleurs" data-en-aria="Colors"><span class="ring"></span><span class="swatch"></span></button>
+      <button id="btn-plus" aria-label="Ajouter" data-en-aria="Add">
+        <svg viewBox="0 0 66 66"><path d="M33 18 V48 M18 33 H48" stroke="#fff" stroke-width="4.4" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Popover réglages outil -->
+    <div id="pop-tool" class="popover hidden">
+      <div class="widths"></div>
+      <div class="opacity-row">
+        <input type="range" id="opacity" min="5" max="100" step="1" />
+        <span id="opacity-val">100 %</span>
+      </div>
+      <div class="eraser-mode">
+        <button data-mode="pixel" data-en="Pixel eraser">Gomme pixel</button>
+        <button data-mode="object" data-en="Object eraser">Gomme objet</button>
+      </div>
+    </div>
+
+    <!-- Popover couleurs -->
+    <div id="pop-color" class="popover hidden">
+      <div class="pop-title"><span data-en="Colors">Couleurs</span><button class="close" aria-label="Fermer" data-en-aria="Close">✕</button></div>
+      <div class="grid"></div>
+      <div class="swatches"></div>
+    </div>
+
+    <!-- Menus -->
+    <div id="menu-more" class="menu hidden">
+      <button data-act="undo"><span data-en="Undo">Annuler</span><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button data-act="redo"><span data-en="Redo">Rétablir</span><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+      <div class="sep"></div>
+      <button data-act="export"><span data-en="Export image">Exporter l'image</span><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
+      <button data-act="clear" class="danger"><span data-en="Clear all">Tout effacer</span><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
+    </div>
+    <div id="menu-plus" class="menu hidden">
+      <button data-act="text"><span data-en="Add text">Ajouter du texte</span><svg viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg></button>
+      <button data-act="image"><span data-en="Insert image">Insérer une image</span><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg></button>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden />
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

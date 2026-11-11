@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title data-en="Calculator">Calculette</title>
+<script src="../i18n.js"></script>
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<!--
+  iPhone-style calculator, shown full screen inside aura_all/index.html (iframe).
+  The parent page owns the Bluetooth link (Aura.peer) and exposes it as window.parent.AuraAll.
+  - Both iPhones show the same calculation, key by key.
+  - Performer side (Aura Browser): the top-right button opens Settings (force, history).
+  - The top-left button goes back to the demo home screen.
+-->
+<style>
+  :root {
+    --bg: #000;
+    --text: #fff;
+    --muted: #8e8e93;
+    --glass: #1f1f1f;
+    --glass-edge: rgba(255, 255, 255, .13);
+    --key-digit: #2e2e2e;
+    --key-digit-pressed: #6e6e6e;
+    --key-function: #565656;
+    --key-function-pressed: #8e8e8e;
+    --key-operator: #fd8600;
+    --key-operator-pressed: #ffc800;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --top-inset: calc(var(--safe-top) + 8px);
+    /* Proportions mesurées sur la vraie calculatrice. */
+    --side: 4.200vw;
+    --gap: 1.800vw;
+    --row-gap: 2.400vw;
+    --keys-bottom: 16vw;
+    --key: calc((100vw - var(--side) * 2 - var(--gap) * 3) / 4);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    -webkit-text-size-adjust: 100%;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    overscroll-behavior: none;
+  }
+  body::before {
+    content: ""; position: fixed; z-index: 9; top: 0; left: 0; right: 0;
+    height: var(--safe-top);
+    background: var(--bg); pointer-events: none;
+  }
+  button {
+    display: flex; align-items: center; justify-content: center;
+    margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit;
+    touch-action: manipulation; -webkit-touch-callout: none;
+  }
+  svg {
+    display: block; fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  .top {
+    position: fixed; z-index: 2; top: var(--top-inset); left: 16px; right: 16px;
+    display: flex; justify-content: space-between;
+    pointer-events: none;
+  }
+  .top > * { pointer-events: auto; }
+  .round {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--glass);
+    box-shadow: inset 0 0 0 .5px var(--glass-edge), inset 0 1px 0 rgba(255, 255, 255, .06);
+  }
+  .round:active { opacity: .55; }
+
+  .screen {
+    position: fixed; left: var(--side); right: var(--side);
+    bottom: calc(var(--keys-bottom) + var(--key) * 5 + var(--row-gap) * 4 + 3vw);
+    text-align: right;
+  }
+  .expression {
+    display: flex; justify-content: flex-end; margin-bottom: 1vw;
+    min-height: 7.5vw; color: var(--muted); font-size: 6.250vw; line-height: 7.5vw;
+    white-space: nowrap; overflow: hidden;
+  }
+  .display { display: flex; justify-content: flex-end; font-size: 15.600vw; line-height: 1.100; white-space: nowrap; overflow: hidden; }
+
+  .keys {
+    position: fixed; left: var(--side); right: var(--side);
+    bottom: var(--keys-bottom);
+    display: grid; grid-template-columns: repeat(4, 1fr); column-gap: var(--gap); row-gap: var(--row-gap);
+  }
+  .key {
+    position: relative;
+    height: var(--key); border-radius: 50%;
+    background: var(--key-digit); font-size: 10vw; font-weight: 400;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, .14), inset 0 0 0 .5px rgba(255, 255, 255, .1);
+    transition: transform .3s ease-out, background-color .3s ease-out;
+  }
+  .key.function { background: var(--key-function); }
+  .key.operator { background: var(--key-operator); }
+  .key.pressed {
+    z-index: 1; transform: scale(1.14); background: var(--key-digit-pressed);
+    transition-duration: .08s;
+  }
+  .key.function.pressed { background: var(--key-function-pressed); }
+  .key.operator.pressed { background: var(--key-operator-pressed); }
+  .key.all-clear { font-size: 8.800vw; }
+  .key svg { stroke-width: 2.800; }
+
+  /* Réglages en plein écran (magicien uniquement). */
+  .menu {
+    position: fixed; z-index: 3; inset: 0;
+    padding: calc(var(--safe-top) + 12px) 16px calc(var(--safe-bottom) + 24px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    background: #1c1c1e; font-size: 17px; line-height: 22px;
+  }
+  .menu::-webkit-scrollbar { display: none; }
+  .menu[hidden] { display: none; }
+  .menu-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .menu-bar h2 { margin: 0; font-size: 34px; line-height: 41px; font-weight: 700; }
+  .menu-bar button { padding: 8px 4px; color: var(--key-operator); font-weight: 600; }
+  .menu h3 { margin: 24px 16px 8px; color: #aeaeb2; font-size: 13px; line-height: 18px; font-weight: 400; text-transform: uppercase; }
+  .menu .menu-note { margin: 8px 16px 0; color: #aeaeb2; font-size: 13px; line-height: 18px; }
+  .menu .group { overflow: hidden; border-radius: 12px; background: #3a3a3c; }
+  .menu .group + .group { margin-top: 24px; }
+  .menu .row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; min-height: 48px; padding: 11px 16px; text-align: left;
+  }
+  .menu .row + .row { border-top: .5px solid rgba(255, 255, 255, .18); }
+  .menu button.row:active { background: #48484a; }
+  .menu .row input, .menu .row select {
+    width: 150px; padding: 0; border: 0; background: none; color: var(--text);
+    font: inherit; text-align: right; outline: none; -webkit-user-select: text; user-select: text;
+  }
+  .menu .row select { -webkit-appearance: none; appearance: none; text-align-last: right; color: #aeaeb2; }
+  .menu .row input::placeholder { color: #8e8e93; }
+  .menu .row input:disabled, .menu .row select:disabled { color: #636366; }
+  .menu .danger { color: #ff453a; }
+  .toggle {
+    position: relative; flex: none; width: 51px; height: 31px; border-radius: 16px;
+    background: #636366; transition: background-color .2s;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .3); transition: transform .2s;
+  }
+  [aria-checked="true"] > .toggle { background: #30d158; }
+  [aria-checked="true"] > .toggle::after { transform: translateX(20px); }
+  .tape {
+    margin: 0; padding: 12px 16px; min-height: 48px; max-height: 220px; overflow-y: auto;
+    font: 15px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: #fff; white-space: pre-wrap; word-break: break-all;
+  }
+  .tape:empty::before { content: "—"; color: #8e8e93; }
+</style>
+</head>
+<body>
+  <header class="top">
+    <button id="back-button" class="round" aria-label="Historique" data-en-aria="History">
+      <svg width="24" height="24" viewBox="0 0 24 24" stroke-width="1.800"><circle cx="12" cy="12" r="10"/><path d="M12 5.500V12H6.500"/></svg>
+    </button>
+    <button id="menu-button" class="round" aria-label="Calculatrice">
+      <svg width="24" height="26" viewBox="0 0 24 26" stroke-width="1.800"><rect x="4" y="2" width="16" height="22" rx="3"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01M8 20h.01M12 20h.01M16 20h.01" stroke-width="2.600"/></svg>
+    </button>
+  </header>
+
+  <div id="menu" class="menu" hidden>
+    <div class="menu-bar">
+      <h2 data-en="Settings">Réglages</h2>
+      <button id="menu-close">OK</button>
+    </div>
+    <p class="menu-note" data-en="Only visible on your iPhone (Aura Browser).">Visible uniquement sur votre iPhone (Aura Browser).</p>
+
+    <h3>Force</h3>
+    <div class="group">
+      <button id="force-mode" class="row" role="switch" aria-checked="false"><span>Force</span><span class="toggle"></span></button>
+      <label class="row"><span data-en="Type">Type</span>
+        <select id="force-type">
+          <option value="ending" data-en="Result ending">Fin du résultat</option>
+          <option value="number" data-en="Whole result">Résultat complet</option>
+          <option value="time" data-en="Date and time">Date et heure</option>
+          <option value="date" data-en="Today's date">Date du jour</option>
+        </select>
+      </label>
+      <label class="row" id="force-digits-row"><span id="force-digits-label">Fin du résultat</span><input id="force-digits" type="text" inputmode="text" maxlength="15" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="8456"></label>
+    </div>
+    <p class="menu-note" id="force-note"></p>
+
+    <h3 data-en="Other iPhone">Autre iPhone</h3>
+    <div class="group">
+      <pre id="tape" class="tape"></pre>
+      <button id="buzz-mode" class="row" role="switch" aria-checked="true"><span data-en="Buzz on every key">Vibrer à chaque touche</span><span class="toggle"></span></button>
+      <button id="reset" class="row danger" data-en="Reset both calculators">Remettre les deux calculatrices à zéro</button>
+    </div>
+  </div>
+
+  <section class="screen">
+    <div id="expression" class="expression"></div>
+    <div id="display" class="display">0</div>
+  </section>
+
+  <main class="keys">
+    <button class="key function" data-key="back" aria-label="Effacer">
+      <svg width="42" height="32" viewBox="0 0 42 32"><path d="M14 3h22a3 3 0 0 1 3 3v20a3 3 0 0 1-3 3H14L2 16Z"/><path d="m20 10 11 12M31 10 20 22"/></svg>
+    </button>
+    <button id="clear" class="key function all-clear" data-key="clear">AC</button>
+    <button class="key function" data-key="percent">%</button>
+    <button class="key operator" data-key="÷" aria-label="Diviser">
+      <svg width="30" height="30" viewBox="0 0 30 30"><path d="M3 15h24"/><circle cx="15" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="24" r="2" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="key" data-key="7">7</button>
+    <button class="key" data-key="8">8</button>
+    <button class="key" data-key="9">9</button>
+    <button class="key operator" data-key="×" aria-label="Multiplier">
+      <svg width="30" height="30" viewBox="0 0 30 30"><path d="m5 5 20 20M25 5 5 25"/></svg>
+    </button>
+    <button class="key" data-key="4">4</button>
+    <button class="key" data-key="5">5</button>
+    <button class="key" data-key="6">6</button>
+    <button class="key operator" data-key="−" aria-label="Soustraire">
+      <svg width="30" height="30" viewBox="0 0 30 30"><path d="M3 15h24"/></svg>
+    </button>
+    <button class="key" data-key="1">1</button>
+    <button class="key" data-key="2">2</button>
+    <button class="key" data-key="3">3</button>
+    <button class="key operator" data-key="+" aria-label="Additionner">
+      <svg width="30" height="30" viewBox="0 0 30 30"><path d="M3 15h24M15 3v24"/></svg>
+    </button>
+    <button class="key" data-key="sign" aria-label="Changer le signe">
+      <svg width="36" height="36" viewBox="0 0 36 36"><path d="M4 11h11M9.500 5.500v11M27 5 9 31M21 25h11"/></svg>
+    </button>
+    <button class="key" data-key="0">0</button>
+    <button class="key" data-key="comma" aria-label="Virgule">,</button>
+    <button class="key operator" data-key="equals" aria-label="Égal">
+      <svg width="30" height="30" viewBox="0 0 30 30"><path d="M4 10h22M4 20h22"/></svg>
+    </button>
+  </main>
+
+<script>
+(() => {
+  'use strict';
+  const MAX_DIGITS = 15;
+  const DIGIT_WIDTH_EM = .62;
+  // Lien avec la page parente (aura_all/index.html). Seule, la calculatrice marche quand même.
+  const hub = (() => { try { return window.parent !== window ? window.parent.AuraAll : null; } catch (_) { return null; } })();
+  const isHost = () => !!(hub && hub.isHost());
+  const send = (msg) => { if (hub) hub.send(msg); };
+  const haptic = (...a) => { if (hub) hub.haptic(...a); };
+
+  const display = document.getElementById('display');
+  const expression = document.getElementById('expression');
+  const clearKey = document.getElementById('clear');
+  const keys = document.querySelector('.keys');
+
+  let terms = [];       // nombres { raw, value } et opérateurs, en alternance
+  let entry = '';       // saisie en cours, telle que tapée
+  let result = null;
+  let lastExpression = '';
+  // Forçage, partagé entre les deux iPhones (seul le magicien le règle).
+  let force = { on: false, type: 'ending', digits: '' };
+
+  const NUMBER_FORMAT = (() => {
+    const options = { maximumFractionDigits: 10 };
+    try { return new Intl.NumberFormat(`${navigator.language}-u-nu-latn`, options); }
+    catch { return new Intl.NumberFormat('fr-FR', options); }
+  })();
+  const DECIMAL = NUMBER_FORMAT.formatToParts(1.5).find((part) => part.type === 'decimal')?.value || ',';
+  const ERROR_TEXT = (window.LANG || navigator.language).toLowerCase().startsWith('fr') ? 'Erreur' : 'Error';
+  const commaKey = keys.querySelector('[data-key="comma"]');
+  commaKey.textContent = DECIMAL;
+
+  const isOperator = (term) => typeof term === 'string';
+  const entryValue = () => parseFloat(entry) || 0;
+  const countDigits = (text) => text.replace(/\D/g, '').length;
+
+  function formatNumber(value) {
+    if (!Number.isFinite(value)) return ERROR_TEXT;
+    if (Math.abs(value) >= 1e15) return value.toExponential(6).replace('.', DECIMAL);
+    return NUMBER_FORMAT.format(value).replace(/ /g, ' ');
+  }
+  function formatEntry() {
+    const [whole, decimals] = entry.split('.');
+    const grouped = formatNumber(parseFloat(whole) || 0);
+    const sign = entry.startsWith('-') && !grouped.startsWith('-') ? '-' : '';
+    return sign + grouped + (decimals === undefined ? '' : DECIMAL + decimals);
+  }
+  function formatTerms(list) {
+    return list.map((term) => (isOperator(term) ? term : formatNumber(term.value))).join('');
+  }
+
+  // × et ÷ d'abord, puis + et −.
+  function evaluate(list) {
+    const sums = [list[0].value];
+    const signs = [];
+    for (let i = 1; i < list.length; i += 2) {
+      const operator = list[i];
+      const value = list[i + 1].value;
+      if (operator === '×') sums[sums.length - 1] *= value;
+      else if (operator === '÷') sums[sums.length - 1] /= value;
+      else { signs.push(operator); sums.push(value); }
+    }
+    const total = sums.reduce((sum, value, i) => (signs[i - 1] === '−' ? sum - value : sum + value));
+    return Number(total.toPrecision(14));
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+  // Force : « fin du résultat » remplace les derniers chiffres (X garde le vrai chiffre),
+  // les autres types remplacent tout le résultat.
+  function forced(value) {
+    if (!force.on || !Number.isFinite(value)) return value;
+    const d = new Date();
+    if (force.type === 'time') return Number(pad(d.getDate()) + pad(d.getMonth() + 1) + pad(d.getHours()) + pad(d.getMinutes()));
+    if (force.type === 'date') return Number(pad(d.getDate()) + pad(d.getMonth() + 1) + d.getFullYear());
+    if (force.type === 'number') {
+      const n = Number(String(force.digits).replace(',', '.'));
+      return force.digits && Number.isFinite(n) ? n : value;
+    }
+    const digits = force.digits;
+    if (!digits) return value;
+    const whole = String(Math.trunc(Math.abs(value)));
+    if (!/^\d+$/.test(whole)) return value;
+    const padded = whole.padStart(digits.length, '0');
+    const start = padded.length - digits.length;
+    const end = [...digits].map((digit, i) => (digit === 'X' ? padded[start + i] : digit)).join('');
+    return (value < 0 ? -1 : 1) * Number(padded.slice(0, start) + end);
+  }
+
+  function fitText(element, text) {
+    element.style.fontSize = '';
+    const size = parseFloat(getComputedStyle(element).fontSize);
+    const fitting = element.clientWidth / (Math.max(text.length, 1) * DIGIT_WIDTH_EM);
+    element.textContent = text;
+    element.style.fontSize = `${Math.min(size, fitting)}px`;
+  }
+
+  function render() {
+    const done = result !== null;
+    const typed = formatTerms(terms) + (entry ? formatEntry() : '');
+    fitText(display, done ? formatNumber(result) : typed || '0');
+    fitText(expression, done ? lastExpression : '');
+    const empty = done || !typed;
+    clearKey.textContent = empty ? 'AC' : 'C';
+    clearKey.classList.toggle('all-clear', empty);
+  }
+
+  function clearAll() { terms = []; entry = ''; result = null; }
+  function pushEntry() {
+    if (entry) terms.push({ raw: entry, value: entryValue() });
+    entry = '';
+  }
+  function typeDigit(digit) {
+    if (result !== null) clearAll();
+    if (countDigits(entry) < MAX_DIGITS) entry += digit;
+  }
+  function typeComma() {
+    if (result !== null) clearAll();
+    if (entry.includes('.')) return;
+    entry = `${entry || '0'}.`;
+  }
+  function typeOperator(operator) {
+    if (result !== null) { terms = [{ value: result }]; result = null; }
+    pushEntry();
+    if (!terms.length) terms.push({ value: 0 });
+    if (isOperator(terms[terms.length - 1])) terms[terms.length - 1] = operator;
+    else terms.push(operator);
+  }
+  function negate() {
+    if (result !== null) result = -result;
+    else if (entry) entry = entry.startsWith('-') ? entry.slice(1) : `-${entry}`;
+  }
+  function percent() {
+    if (result !== null) result /= 100;
+    else if (entry) entry = String(entryValue() / 100);
+  }
+  function backspace() {
+    if (result !== null) return;
+    if (entry) entry = entry.slice(0, -1);
+    else if (terms.length) {
+      terms.pop();
+      const { raw, value } = terms.pop();
+      entry = raw ?? String(value);
+    }
+  }
+  // Renvoie true si le résultat a été forcé.
+  function equals() {
+    pushEntry();
+    if (isOperator(terms[terms.length - 1])) terms.pop();
+    if (!terms.length) return false;
+    lastExpression = formatTerms(terms);
+    const value = evaluate(terms);
+    // La force ne touche que le premier = : un calcul qui repart du résultat reste exact.
+    result = terms[0].raw === undefined ? value : forced(value);
+    terms = [];
+    return result !== value;
+  }
+
+  const actions = { clear: clearAll, back: backspace, percent, sign: negate, comma: typeComma };
+  function apply(key) {
+    if (key === 'equals') return equals();
+    if (actions[key]) actions[key]();
+    else if (/\d/.test(key)) typeDigit(key);
+    else typeOperator(key);
+    return false;
+  }
+
+  // ---------- Touches ----------
+  function releaseKeys() { keys.querySelectorAll('.pressed').forEach((key) => key.classList.remove('pressed')); }
+  keys.addEventListener('pointerdown', (event) => { event.target.closest('.key')?.classList.add('pressed'); });
+  for (const type of ['pointerup', 'pointercancel']) document.addEventListener(type, releaseKeys);
+
+  const state = () => ({ terms, entry, result, lastExpression });
+  keys.addEventListener('click', (event) => {
+    const key = event.target.closest('[data-key]')?.dataset.key;
+    if (!key) return;
+    const wasForced = apply(key);
+    render();
+    tapeKey(key);
+    send({ t: 'calc.state', k: key, s: state(), forced: wasForced });
+  });
+
+  // ---------- Synchronisation (appelée par la page parente) ----------
+  const LABELS = { back: '⌫', clear: ' [AC]\n', percent: '%', sign: '±', comma: ',', equals: '=' };
+  function tapeKey(key) {
+    const tape = document.getElementById('tape');
+    if (key === 'equals') tape.textContent += ' = ' + display.textContent + '\n';
+    else if (key === 'clear') tape.textContent += LABELS.clear;
+    else if (/[÷×−+]/.test(key)) tape.textContent += ' ' + key + ' ';
+    else tape.textContent += LABELS[key] || key;
+    tape.scrollTop = tape.scrollHeight;
+  }
+  function flashKey(key) {
+    const el = keys.querySelector(`[data-key="${CSS.escape(key)}"]`);
+    if (!el) return;
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 160);
+  }
+
+  window.auraIncoming = (msg) => {
+    if (msg.t === 'calc.state') {
+      ({ terms, entry, result, lastExpression } = msg.s);
+      render();
+      flashKey(msg.k);
+      tapeKey(msg.k);
+      if (isHost() && buzz) haptic(msg.k === 'equals' ? 'notification' : 'selection', msg.k === 'equals' ? { style: 'success' } : undefined);
+      if (msg.k === 'equals' && hub) hub.relay(display.textContent);
+    } else if (msg.t === 'calc.force') {
+      force = msg.force;
+      showForce();
+    } else if (msg.t === 'calc.sync') {
+      ({ terms, entry, result, lastExpression } = msg.s);
+      force = msg.force;
+      render(); showForce();
+    }
+  };
+  // À la connexion, le magicien envoie son état (calcul + forçage) au spectateur.
+  window.auraSync = () => { if (isHost()) send({ t: 'calc.sync', s: state(), force }); };
+  window.auraRefresh = () => {
+    document.getElementById('menu-button').style.visibility = '';
+    render();
+  };
+
+  // ---------- Réglages (magicien) ----------
+  const menu = document.getElementById('menu');
+  document.getElementById('back-button').addEventListener('click', () => { if (hub) hub.back(); });
+  document.getElementById('menu-button').addEventListener('click', () => {
+    if (hub && !isHost()) return;            // spectateur : le bouton ne fait rien
+    menu.hidden = false;
+  });
+  document.getElementById('menu-close').addEventListener('click', () => {
+    menu.hidden = true;
+    document.activeElement.blur();
+  });
+
+  const forceButton = document.getElementById('force-mode');
+  const forceType = document.getElementById('force-type');
+  const forceInput = document.getElementById('force-digits');
+  const tr = window.tr || ((fr) => fr);
+  const NOTES = {
+    ending: tr('Le premier = de chaque calcul se termine par ces chiffres. Un X garde le vrai chiffre : 845X laisse le dernier exact.',
+      'The first = of each calculation ends with these digits. An X keeps the real digit: 845X leaves the last one exact.'),
+    number: tr('Le premier = de chaque calcul affiche exactement ce nombre.', 'The first = of each calculation shows exactly this number.'),
+    time: tr('Le premier = affiche la date et l\'heure du moment : JJMMHHMM.', 'The first = shows the current date and time: DDMMHHMM.'),
+    date: tr('Le premier = affiche la date du jour : JJMMAAAA.', 'The first = shows today\'s date: DDMMYYYY.'),
+  };
+  function showForce() {
+    forceButton.setAttribute('aria-checked', force.on);
+    forceType.value = force.type;
+    forceType.disabled = !force.on;
+    const needsDigits = force.type === 'ending' || force.type === 'number';
+    document.getElementById('force-digits-row').style.display = needsDigits ? '' : 'none';
+    document.getElementById('force-digits-label').textContent = force.type === 'number' ? tr('Résultat', 'Result') : tr('Fin du résultat', 'Result ending');
+    forceInput.disabled = !force.on;
+    forceInput.value = force.digits;
+    forceInput.placeholder = force.type === 'number' ? '1234' : '8456';
+    document.getElementById('force-note').textContent = NOTES[force.type];
+  }
+  const shareForce = () => { showForce(); send({ t: 'calc.force', force }); };
+  forceButton.addEventListener('click', () => { force = { ...force, on: !force.on }; shareForce(); haptic('selection'); });
+  forceType.addEventListener('change', () => { force = { ...force, type: forceType.value, digits: '' }; shareForce(); });
+  forceInput.addEventListener('input', () => {
+    const digits = force.type === 'number'
+      ? forceInput.value.replace(/[^0-9,.-]/g, '').slice(0, 15)
+      : forceInput.value.toUpperCase().replace(/[^0-9X]/g, '').slice(0, 10);
+    force = { ...force, digits };
+    forceInput.value = digits;
+    send({ t: 'calc.force', force });
+  });
+
+  let buzz = true;
+  const buzzButton = document.getElementById('buzz-mode');
+  buzzButton.addEventListener('click', () => { buzz = !buzz; buzzButton.setAttribute('aria-checked', buzz); });
+  document.getElementById('reset').addEventListener('click', () => {
+    clearAll(); lastExpression = ''; render();
+    document.getElementById('tape').textContent = '';
+    send({ t: 'calc.state', k: 'clear', s: state(), forced: false });
+    menu.hidden = true;
+  });
+
+  document.addEventListener('contextmenu', (event) => { if (event.target.tagName !== 'INPUT') event.preventDefault(); });
+  window.addEventListener('resize', render);
+  showForce();
+  render();
+})();
+</script>
+</body>
+</html>

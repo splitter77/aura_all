@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0b1a">
+<title data-en="Aura · All demos">Aura · Toutes les démos</title>
+<!--
+  Aura · All demos — one page, opened on BOTH iPhones:
+    - in Aura Browser (your iPhone)          → host: waits for the App Clip;
+    - in the App Clip (scan of your tag)     → guest: looks for your iPhone and connects by itself.
+  The Bluetooth link (Aura.peer) is automatic, needs no network, and stays open when you switch demos
+  (navigation uses #hash, the page is never reloaded).
+
+  Hosting: HTTPS, on a domain in your Aura bookmarks (or the domain of the App Clip's page).
+
+  URL options:
+    ?room=abc          named room (same value on both sides) instead of automatic pairing through the tag
+    ?role=host|join    force the role (e.g. two Aura Browsers: ?room=abc&role=host / ?room=abc&role=join)
+    ?mock=host|join    simulator to test on a computer: open two tabs, one with host, one with join
+    ?lang=fr|en        language (default: the phone language)
+-->
+<link rel="stylesheet" href="style.css">
+<script src="i18n.js"></script>
+<script>
+  // Simulator (computer tests only): loaded only with ?mock=…
+  if (/[?&]mock=/.test(location.search)) document.write('<script src="aura-mock.js"><\/script>');
+</script>
+<script src="aura-atom.js"></script>
+<script src="aura-peeksmith.js"></script>
+</head>
+<body data-role="none">
+
+<header class="top">
+  <button class="back" id="back" aria-label="Retour" data-en-aria="Back">‹</button>
+  <h1 id="title">Aura</h1>
+  <button id="pill" class="pill wait"><span class="dot"></span><span id="pillText" data-en="Starting…">Démarrage…</span></button>
+</header>
+
+<!-- =================================================================== HOME -->
+<section class="view" id="v-home" data-title="Aura" data-title-en="Aura">
+  <div class="card conn" id="connCard">
+    <div class="avatar" id="avatar">📡</div>
+    <div class="grow">
+      <strong id="peerName" data-en="Nobody yet">Personne pour l'instant</strong>
+      <span id="peerInfo">…</span>
+      <small id="lastDiag" class="last-diag"></small>
+    </div>
+  </div>
+
+  <details class="card room-box">
+    <summary data-en="Not connecting?">Ça ne se connecte pas ?</summary>
+    <p class="hint"
+       data-en-html="Enter the same code on both iPhones (e.g. 1234) to link them without the tag. Leave it empty to go back to automatic pairing. Each step is logged on the &lt;a href=&quot;#info&quot;&gt;Device&lt;/a&gt; screen.">Entrez le même code sur les deux iPhones (ex. 1234) pour les relier sans passer par le tag. Laissez vide pour revenir à l'appairage automatique. Le détail de chaque étape est dans l'écran <a href="#info">Appareil</a>.</p>
+    <form id="roomForm" class="row">
+      <input id="roomInput" class="grow" placeholder="Code de salon" data-en-placeholder="Room code" autocomplete="off" autocapitalize="off" inputmode="numeric">
+      <button class="primary" data-en="Use">Utiliser</button>
+    </form>
+  </details>
+
+  <label class="switch host-only"><input type="checkbox" id="follow" checked>
+    <span data-en="The other iPhone follows my screens">L'autre iPhone suit mes écrans</span></label>
+
+  <div class="grid">
+    <a class="tile" href="#calc"><b>🧮</b><span data-en="Calculator">Calculatrice</span><small data-en="synced + force">synchronisée + forçage</small></a>
+    <a class="tile" href="#draw"><b>✏️</b><span>Notes</span><small data-en="drawn on both sides">reproduit dans les 2 sens</small></a>
+    <a class="tile" href="#cards"><b>🃏</b><span data-en="Card">Carte</span><small data-en="pick → reveal">choix → révélation</small></a>
+    <a class="tile" href="#chat"><b>💬</b><span>Messages</span><small data-en="buzz, flash, reveal">vibrer, flash, révéler</small></a>
+    <a class="tile" href="#haptics"><b>📳</b><span data-en="Haptics">Haptique</span><small data-en="local or remote">locale ou à distance</small></a>
+    <a class="tile" href="#sensors"><b>📷</b><span data-en="Sensors">Capteurs</span><small data-en="proximity, camera, mic, GPS">proximité, caméra, micro, GPS</small></a>
+    <a class="tile" href="#ble"><b>🔵</b><span>Bluetooth</span><small data-en="scan, Atom, PeekSmith">scan, Atom, PeekSmith</small></a>
+    <a class="tile" href="#info"><b>ℹ️</b><span data-en="Device">Appareil</span><small data-en="capabilities, IDs">capacités, identifiants</small></a>
+  </div>
+  <p class="hint" data-en="Open this same page in Aura Browser and in the App Clip: the two iPhones connect over Bluetooth, with no network.">Ouvrez cette même page dans Aura Browser et dans l'App Clip : les deux iPhones se connectent en Bluetooth, sans réseau.</p>
+  <div class="lang-switch">
+    <button data-lang="fr">Français</button>
+    <button data-lang="en">English</button>
+  </div>
+</section>
+
+<!-- =================================================================== CALCULATOR -->
+<section class="view full" id="v-calc" data-title="Calculatrice" data-title-en="Calculator">
+  <iframe id="calcFrame" class="app-frame" src="calc/index.html" title="Calculator"></iframe>
+</section>
+
+<!-- =================================================================== NOTES (drawing) -->
+<section class="view full" id="v-draw" data-title="Notes" data-title-en="Notes">
+  <iframe id="notesFrame" class="app-frame" src="notes/index.html" title="Notes"></iframe>
+</section>
+
+<!-- =================================================================== CARD -->
+<section class="view" id="v-cards" data-title="Carte" data-title-en="Card">
+  <div class="card peek-card">
+    <h2 data-en="Card received">Carte reçue</h2>
+    <div id="peek" class="peek">—</div>
+  </div>
+  <h2 data-en="Pick a card">Choisir une carte</h2>
+  <div class="suits" id="suits">
+    <button data-s="♠" class="on">♠</button><button data-s="♥" class="red">♥</button>
+    <button data-s="♦" class="red">♦</button><button data-s="♣">♣</button>
+  </div>
+  <div class="values" id="values"></div>
+  <p class="hint" data-en="The card you tap shows up on the other iPhone with a buzz (and on the PeekSmith if it is connected).">La carte touchée apparaît sur l'autre iPhone avec une vibration (et sur le PeekSmith s'il est connecté).</p>
+</section>
+
+<!-- =================================================================== MESSAGES -->
+<section class="view" id="v-chat" data-title="Messages" data-title-en="Messages">
+  <div class="buttons three">
+    <button id="chatBuzz" class="needs-peer" data-en="📳 Buzz">📳 Vibrer</button>
+    <button id="chatFlash" class="needs-peer">💡 Flash</button>
+    <button id="chatPing" class="needs-peer">⏱️ Ping</button>
+  </div>
+  <div id="log" class="log"></div>
+  <form id="chatForm" class="row">
+    <input id="chatInput" class="grow" placeholder="Message…" autocomplete="off" enterkeyhint="send">
+    <button class="primary needs-peer" data-en="Send">Envoyer</button>
+  </form>
+  <form id="revealForm" class="row">
+    <input id="revealInput" class="grow" placeholder="Texte à révéler en plein écran…" data-en-placeholder="Text to reveal full screen…" autocomplete="off">
+    <button class="needs-peer" data-en="Reveal">Révéler</button>
+  </form>
+</section>
+
+<!-- =================================================================== HAPTICS -->
+<section class="view" id="v-haptics" data-title="Haptique" data-title-en="Haptics">
+  <label class="switch"><input type="checkbox" id="hapRemote"><span data-en="Play on the other iPhone">Jouer sur l'autre iPhone</span></label>
+  <h2>Impact</h2>
+  <div class="buttons">
+    <button data-h='["impact",{"style":"light"}]' data-en="Light">Léger</button>
+    <button data-h='["impact",{"style":"medium"}]' data-en="Medium">Moyen</button>
+    <button data-h='["impact",{"style":"heavy"}]' data-en="Heavy">Fort</button>
+    <button data-h='["impact",{"style":"soft"}]' data-en="Soft">Doux</button>
+    <button data-h='["impact",{"style":"rigid"}]' data-en="Rigid">Rigide</button>
+    <button data-h='["selection"]' data-en="Selection">Sélection</button>
+  </div>
+  <h2>Notification</h2>
+  <div class="buttons three">
+    <button data-h='["notification",{"style":"success"}]' data-en="✅ Success">✅ Succès</button>
+    <button data-h='["notification",{"style":"warning"}]' data-en="⚠️ Warning">⚠️ Alerte</button>
+    <button data-h='["notification",{"style":"error"}]' data-en="⛔ Error">⛔ Erreur</button>
+  </div>
+  <h2 data-en="Patterns (Core Haptics)">Motifs (Core Haptics)</h2>
+  <div class="buttons">
+    <button data-p="heart" data-en="❤️ Heartbeat">❤️ Battement</button>
+    <button data-p="double">✌️ Double tap</button>
+    <button data-p="long" data-en="〰️ Long">〰️ Longue</button>
+    <button data-p="ramp" data-en="📈 Ramp">📈 Montée</button>
+    <button data-p="sos">🆘 SOS</button>
+    <button id="hapVibrate">navigator.vibrate</button>
+  </div>
+  <h2 data-en="Secret code (Morse)">Code secret (morse)</h2>
+  <form id="morseForm" class="row">
+    <input id="morseInput" class="grow" placeholder="Ex. AS, 7, ROUGE" data-en-placeholder="E.g. AS, 7, RED" autocomplete="off">
+    <button class="primary" data-en="Buzz">Vibrer</button>
+  </form>
+  <p class="hint" data-en="Dot = short tap, dash = long buzz. Handy to send information to the other iPhone in secret.">Point = tap court, trait = vibration longue. Pratique pour transmettre une info en secret à l'autre iPhone.</p>
+</section>
+
+<!-- =================================================================== SENSORS -->
+<section class="view" id="v-sensors" data-title="Capteurs" data-title-en="Sensors">
+  <h2 data-en="Proximity sensor">Capteur de proximité</h2>
+  <div class="card">
+    <div class="row center">
+      <div class="prox" id="proxMe"><b>✋</b><span data-en="Here">Ici</span></div>
+      <div class="prox" id="proxThem"><b>📡</b><span data-en="Other iPhone">Autre iPhone</span></div>
+    </div>
+    <div class="row"><button class="grow" id="proxToggle" data-en="Turn on">Activer</button></div>
+    <label class="switch"><input type="checkbox" id="proxSend" checked><span data-en="Tell the other iPhone (buzz)">Prévenir l'autre iPhone (vibration)</span></label>
+    <p class="hint" data-en="Cover the top of the screen: iOS turns the screen off, like during a call.">Couvrez le haut de l'écran : iOS éteint l'écran comme pendant un appel.</p>
+  </div>
+
+  <h2 data-en="Camera and flash">Caméra et flash</h2>
+  <div class="card">
+    <video id="video" playsinline muted></video>
+    <div class="buttons">
+      <button id="camToggle" data-en="Open camera">Ouvrir la caméra</button>
+      <button id="camSwitch" disabled data-en="↻ Front / back">↻ Avant / arrière</button>
+      <button id="torchToggle" disabled>💡 Flash</button>
+      <button id="camShot" disabled>📸 Photo</button>
+    </div>
+    <img id="shot" class="shot" alt="" hidden>
+    <button id="shotSend" class="needs-peer" hidden data-en="Send the photo to the other iPhone">Envoyer la photo à l'autre iPhone</button>
+    <div id="photoIn" hidden><h2 data-en="Photo received">Photo reçue</h2><img id="photoInImg" class="shot" alt=""></div>
+  </div>
+
+  <h2 data-en="Microphone">Micro</h2>
+  <div class="card">
+    <div class="meter"><div id="micBar"></div></div>
+    <div class="row"><button class="grow" id="micToggle" data-en="Listen">Écouter</button></div>
+    <label class="switch"><input type="checkbox" id="micClap"><span data-en="A clap makes the other iPhone buzz">Un claquement fait vibrer l'autre iPhone</span></label>
+  </div>
+
+  <h2 data-en="Location">Localisation</h2>
+  <div class="card">
+    <div id="geo" class="mono">—</div>
+    <div class="row"><button class="grow" id="geoGet" data-en="Locate me">Me localiser</button></div>
+  </div>
+</section>
+
+<!-- =================================================================== BLUETOOTH -->
+<section class="view" id="v-ble" data-title="Bluetooth" data-title-en="Bluetooth">
+  <div class="card status"><span class="dot" id="bleDot"></span><span id="bleState" data-en="Bluetooth state: …">État Bluetooth : …</span></div>
+
+  <h2 data-en="Nearby devices">Appareils à proximité</h2>
+  <div class="card">
+    <div class="row"><input id="blePrefix" class="grow" placeholder="Préfixe de nom (optionnel)" data-en-placeholder="Name prefix (optional)"><button id="bleScan" data-en="Scan">Scanner</button></div>
+    <ul id="bleList" class="list"></ul>
+  </div>
+
+  <h2>Electricks Atom 2</h2>
+  <div class="card">
+    <div class="row"><span class="grow" id="atomState" data-en="Not connected">Non connecté</span><button id="atomConnect" data-en="Connect">Connecter</button></div>
+    <div class="buttons three dev-atom">
+      <button data-atom="vib" data-en="📳 Buzz">📳 Vibrer</button>
+      <button data-atom="g">🟢 LED</button>
+      <button data-atom="off">⚫ LED off</button>
+    </div>
+    <label class="switch"><input type="checkbox" id="atomRelay" checked><span data-en="Buzzes when info arrives from the other iPhone">Vibre quand une info arrive de l'autre iPhone</span></label>
+    <label class="switch"><input type="checkbox" id="atomRemote" checked><span data-en="A click on the Atom makes the other iPhone buzz">Un clic sur l'Atom fait vibrer l'autre iPhone</span></label>
+    <pre class="tape small" id="atomLog"></pre>
+  </div>
+
+  <h2>Electricks PeekSmith 3</h2>
+  <div class="card">
+    <div class="row"><span class="grow" id="psState" data-en="Not connected">Non connecté</span><button id="psConnect" data-en="Connect">Connecter</button></div>
+    <form id="psForm" class="row"><input id="psText" class="grow" placeholder="Texte à afficher" data-en-placeholder="Text to display"><button class="dev-ps" data-en="Show">Afficher</button></form>
+    <div class="buttons three dev-ps">
+      <button data-ps="vib" data-en="📳 Buzz">📳 Vibrer</button>
+      <button data-ps="clear" data-en="Clear">Effacer</button>
+      <button data-ps="bat" data-en="🔋 Battery">🔋 Batterie</button>
+    </div>
+    <label class="switch"><input type="checkbox" id="psRelay" checked><span data-en="Shows info received (card, result, message)">Affiche les infos reçues (carte, résultat, message)</span></label>
+  </div>
+</section>
+
+<!-- =================================================================== DEVICE -->
+<section class="view" id="v-info" data-title="Appareil" data-title-en="Device">
+  <h2 data-en="Aura capabilities">Capacités d'Aura</h2>
+  <div class="chips" id="caps"></div>
+  <h2 data-en="Identifiers">Identifiants</h2>
+  <div class="card mono" id="device">—</div>
+  <h2 data-en="Link">Liaison</h2>
+  <div class="card mono" id="linkInfo">—</div>
+  <h2 data-en="Link log">Journal de la liaison</h2>
+  <pre class="tape small diag" id="diag"></pre>
+  <div class="buttons">
+    <button id="reconnect" data-en="Reconnect">Reconnecter</button>
+    <button id="leave" data-en="Cut the link">Couper la liaison</button>
+  </div>
+</section>
+
+<div class="flash" id="flashLayer"></div>
+<div class="reveal" id="reveal" hidden><div id="revealText"></div><small data-en="Tap to close">Touchez pour fermer</small></div>
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
